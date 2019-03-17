@@ -1,0 +1,327 @@
+<div id="applicationName" style="display: none;">WirelessLight</div>
+<div id="shortApplicationName" style="display: none;">WLight</div>
+
+<h2 class="content-subhead">Lights<span id="l1"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
+<form class="pure-form pure-form-aligned" id='f1'>
+    <fieldset>
+
+<table class="pure-table pure-table-bordered">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Push Button</th>
+            <th>Click Time(ms)</th>
+        </tr>
+    </thead>
+
+    <tbody id="lightsTBody">
+    </tbody>
+</table>
+
+<h3 class="content-subhead">Home Automation</h3>
+
+<div class="pure-control-group">
+    <label for="haproto">Type</label>
+    <select id='haproto' name='haproto'>
+        <option value="0">Disabled</option>
+        <option value="1">HTTP</option>
+        <option value="2">MQTT</option>
+    </select>
+</div>
+
+<div id='hae' style='display:none'>
+
+    <div class="pure-control-group">
+        <label for="hatls">SSL/TLS</label>
+        <input type='checkbox' id='hatls' name='hatls'>
+    </div>
+    <div class="pure-control-group">
+        <label for="hahost">Hostname</label>
+        <input type='text' id='hahost' name='hahost' maxlength='64' pattern='[A-Za-z0-9-.]+' size='50' placeholder="IP or DNS Name">
+        <span class="pure-form-message-inline">(Hostname should match with certificate name if SSL/TLS is enabled)</span>
+    </div>
+
+    <div id='hahe'>
+
+        <div class="pure-control-group">
+            <label for="hahtype">Type</label>
+            <select id='hahtype' name='hahtype'>
+                <option value="0">Generic</option>
+                <option value="1">Jeedom Virtual</option>
+            </select>
+        </div>
+
+        <div class="pure-control-group">
+            <table class="pure-table pure-table-bordered" style="display:inline-block">
+                <thead>
+                    <tr id="idsTHeadTR">
+                        <th>#</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="lidTR">
+                        <td>Status Ids</td>
+                    </tr>
+                    <tr id="scidTR">
+                        <td>1-Click Ids</td>
+                    </tr>
+                    <tr id="dcidTR">
+                        <td>2-Click Ids</td>
+                    </tr>
+                    <tr id="tcidTR">
+                        <td>3-Click Ids</td>
+                    </tr>
+                    <tr id="qcidTR">
+                        <td>4-Click Ids</td>
+                    </tr>
+                    <tr id="cvidTR" style="display:none;">
+                        <td>Multi-Click Ids</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id='hahtlse'>
+            <div class="pure-control-group">
+                <label for="hahfp">TLS FingerPrint</label>
+                <input type='text' id='hahfp' name='hahfp' maxlength='59' pattern='^([0-9A-Fa-f]{2}[ :-]*){19}([0-9A-Fa-f]{2})$' size='65'>
+                <span class="pure-form-message-inline">(separators are : &lt;none&gt;,&lt;space&gt;,:,-)</span>
+            </div>
+        </div>
+
+        <div id='hah0'>
+            <div class="pure-control-group">
+                <label for="hahgup">URI Pattern</label>
+                <input type='text' id='hahgup' name='hahgup' maxlength='150' size='65' placeholder="Used to generate requests URI">
+                <span id="hahgupi" name="hahgupi" class="infotip">?</span>
+            </div>
+
+            <div class="pure-control-group" id="hahgupidiv" name="hahgupidiv" style="display:none;">
+                <label></label>
+                <div class="infotipdiv">
+                    URI Pattern placeholders : <br>
+                    <b>$tls$</b> : replaced by 's' for HTTPS connection<br>
+                    <b>$host$</b> : replaced by hostname<br>
+                    <b>$id$</b> : replaced the Comand ID<br>
+                    <b>$val$</b> : replaced by 1<br>
+                    Ex : http<b>$tls$</b>://<b>$host$</b>/api/pushValue?id=<b>$id$</b>&amp;value=<b>$val$</b>
+                </div>
+            </div>
+        </div>
+
+        <div id='hah1'>
+            <div class="pure-control-group">
+                <label for="hahjak">ApiKey</label>
+                <input type='password' id='hahjak' name='hahjak' maxlength='48' pattern='[A-Za-z0-9-.]+' size=50 title='APIKey from Jeedom configuration webpage'>
+            </div>
+        </div>
+    </div>
+
+    <div id='hame'>
+
+        <div class="pure-control-group">
+            <label for="hamtype">Type</label>
+            <select id='hamtype' name='hamtype'>
+                <option value="0">Generic (Same topic)</option>
+                <option value="1">Generic (Separated light Topics)</option>
+            </select>
+            <span id="hamtype0i" name="hamtype0i" class="infotip">?</span>
+            <span id="hamtype1i" name="hamtype1i" class="infotip" style="display:none;">?</span>
+        </div>
+        <div class="pure-control-group" id="hamtype0div" name="hamtype0div" style="display:none;">
+        <label></label>
+        <div class="infotipdiv">
+                Published topics : <br>
+                <b>/statusX</b> : Light state (X as light number) = 0 or 1<br>
+                <b>/clickX</b> : Light events (X as light number) = number of click 0-4<br>
+                Subscribed topics : <br>
+                <b>/commandX</b> : command to execute (X as light number) = 0:Off;1:On;t:Toggle<br>
+        </div>
+        </div>
+        <div class="pure-control-group" id="hamtype1div" name="hamtype1div" style="display:none;">
+            <label></label>
+            <div class="infotipdiv">
+                Published topics : <br>
+                <b>/X/status</b> : Light state (X as light number) = 0 or 1<br>
+                <b>/X/click</b> : Light events (X as light number) = number of click 0-4<br>
+                Subscribed topics : <br>
+                <b>/X/command</b> : command to execute (X as light number) = 0:Off;1:On;t:Toggle<br>
+            </div>
+        </div>
+
+        <div class="pure-control-group">
+            <label for="hamport">Port</label>
+            <input type='number' id='hamport' name='hamport' min='1' max='65535'>
+        </div>
+        <div class="pure-control-group">
+            <label for="hamu">Username</label>
+            <input type='text' id='hamu' name='hamu' maxlength='64' placeholder="optional">
+        </div>
+        <div class="pure-control-group">
+            <label for="hamp">Password</label>
+            <input type='password' id='hamp' name='hamp' maxlength='64' placeholder="optional">
+        </div>
+
+        <div id='hamgbte'>
+            <div class="pure-control-group">
+                <label for="hamgbt">Base Topic</label>
+                <input type='text' id='hamgbt' name='hamgbt' maxlength='64'>
+                <span id="hamgbti" name="hamgbti" class="infotip">?</span>
+            </div>
+
+            <div class="pure-control-group" id="hamgbtidiv" name="hamgbtidiv" style="display:none;">
+                <label></label>
+                <div class="infotipdiv">
+                    Base Topic placeholders : <br>
+                    <b>$sn$</b> : Serial Number of this device<br>
+                    <b>$mac$</b> : WiFi MAC address of this device<br>
+                    <b>$model$</b> : Model of this device<br>
+                    Ex : DomoChip/<b>$sn$</b> or <b>$model$</b>/<b>$mac$</b>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+        <div class="pure-controls">
+            <input type='submit' value='Save' class="pure-button pure-button-primary" disabled>
+        </div>
+    </fieldset>
+</form>
+<span id='r1'></span>
+
+<script>
+    $("#haproto").change(function(){
+        switch($("#haproto").val()){
+            case "0":
+                $("#hae").hide();
+                break;
+            case "1":
+                $("#hae").show();
+                $("#hahe").show();
+                $("#hame").hide();
+                break;
+            case "2":
+                $("#hae").show();
+                $("#hahe").hide();
+                $("#hame").show();
+                break;
+        }
+    });
+
+    $("#hahtype").change(function(){
+        switch($("#hahtype").val()){
+            case "0":
+                $("#scidTR").show();
+                $("#dcidTR").show();
+                $("#tcidTR").show();
+                $("#qcidTR").show();
+                $("#cvidTR").hide();
+                $("#hah0").show();
+                $("#hah1").hide();
+                break;
+            case "1":
+                $("#scidTR").hide();
+                $("#dcidTR").hide();
+                $("#tcidTR").hide();
+                $("#qcidTR").hide();
+                $("#cvidTR").show();
+                $("#hah0").hide();
+                $("#hah1").show();
+                break;
+        }
+    });
+    $("#hahgupi").click(function(){$("#hahgupidiv").slideToggle(300);});
+
+    $("#hamtype").change(function(){
+        switch($("#hamtype").val()){
+            case "0":
+                $("#hamgbte").show();
+                $("#hamtype0i").show();
+                $("#hamtype1i").hide();
+                $("#hamtype1div").hide();
+                break;
+            case "1":
+                $("#hamgbte").show();
+                $("#hamtype0i").hide();
+                $("#hamtype0div").hide();
+                $("#hamtype1i").show();
+                break;
+        }
+    });
+    $("#hamtype0i").click(function(){$("#hamtype0div").slideToggle(300);});
+    $("#hamtype1i").click(function(){$("#hamtype1div").slideToggle(300);});
+    $("#hamgbti").click(function(){$("#hamgbtidiv").slideToggle(300);});
+
+
+    $("#hatls").change(function(){
+        if($("#hatls").prop("checked")){
+            $("#hahtlse").show();
+            $("#hamport").val(8883);
+        }
+        else{
+            $("#hahtlse").hide();
+            $("#hamport").val(1883);
+        }
+    });
+
+    $("#f1").submit(function(event){
+        $("#r1").html("Saving Configuration...");
+        $.post("/sc1",$("#f1").serialize(),function(){
+            $("#f1").hide();
+            var reload5sec=document.createElement('script');
+            reload5sec.text='var count=4;var cdi=setInterval(function(){$("#cd").text(count);if(!count){clearInterval(cdi);location.reload();}count--;},1000);';
+            $('#r1').html('<h3><b>Configuration saved <span style="color: green;">successfully</span>. System is restarting now.</b></h3>This page will be reloaded in <span id="cd">5</span>sec.').append(reload5sec);
+        }).fail(function(){
+            $('#r1').html('<h3><b>Configuration <span style="color: red;">error</span>.</b></h3>');
+        });
+        event.preventDefault();
+    });
+
+    $.getJSON("/gc1", function(GC1){
+
+        var lightsTBody="";
+        var idsTHeadTR="";
+        var lidTR="";
+        var scidTR="";
+        var dcidTR="";
+        var tcidTR="";
+        var qcidTR="";
+        var cvidTR="";
+
+        for(i=1;i<=GC1.nol;i++){
+
+            lightsTBody+='<tr><td>'+i+'</td><td><input type="text" id="ln'+i+'" name="ln'+i+'" maxlength="25"></td><td><input type="checkbox" id="btm'+i+'" name="btm'+i+'"></td><td><input type="number" id="mct'+i+'" name="mct'+i+'" min="125" max="1000"></td></tr>';
+            idsTHeadTR+='<th>'+i+'</th>';
+            lidTR+='<td style="padding: 5px;"><input type="number" id="lid'+i+'" name="lid'+i+'" max="65535" style="width:90px;"></td>';
+            scidTR+='<td style="padding: 5px;"><input type="number" id="scid'+i+'" name="scid'+i+'" max="65535" style="width:90px;"></td>';
+            dcidTR+='<td style="padding: 5px;"><input type="number" id="dcid'+i+'" name="dcid'+i+'" max="65535" style="width:90px;"></td>';
+            tcidTR+='<td style="padding: 5px;"><input type="number" id="tcid'+i+'" name="tcid'+i+'" max="65535" style="width:90px;"></td>';
+            qcidTR+='<td style="padding: 5px;"><input type="number" id="qcid'+i+'" name="qcid'+i+'" max="65535" style="width:90px;"></td>';
+            cvidTR+='<td style="padding: 5px;"><input type="number" id="cvid'+i+'" name="cvid'+i+'" max="65535" style="width:90px;"></td>';
+        }
+
+        $("#lightsTBody").append(lightsTBody);
+        $("#idsTHeadTR").append(idsTHeadTR);
+        $("#lidTR").append(lidTR);
+        $("#scidTR").append(scidTR);
+        $("#dcidTR").append(dcidTR);
+        $("#tcidTR").append(tcidTR);
+        $("#qcidTR").append(qcidTR);
+        $("#cvidTR").append(cvidTR);
+
+        $.each(GC1,function(k,v){
+
+            if($('#'+k).prop('type')!='checkbox') $('#'+k).val(v);
+            else $('#'+k).prop("checked",v);
+
+            $('#'+k).trigger("change");
+        })
+
+        $("input[type=submit]",$("#f1")).prop("disabled",false);
+        $("#l1").fadeOut();
+    })
+    .fail(function(){
+        $("#l1").html('<h6 style="display:inline;color:red;"><b> Failed</b></h6>');
+    });
+</script>

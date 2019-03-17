@@ -1,0 +1,8 @@
+(fp_lib_table
+  (lib (name rect)(type KiCad)(uri "$(KIPRJMOD)/lib/rect.pretty")(options "")(descr ""))
+  (lib (name ESP8266)(type KiCad)(uri "$(KIPRJMOD)/lib/ESP8266.pretty")(options "")(descr ""))
+  (lib (name KF-TerminalBlock)(type KiCad)(uri "$(KIPRJMOD)/lib/KF-TerminalBlock.pretty")(options "")(descr ""))
+  (lib (name makerlab)(type KiCad)(uri "$(KIPRJMOD)/lib/makerlab.pretty")(options "")(descr ""))
+  (lib (name fuse)(type KiCad)(uri "$(KIPRJMOD)/lib/fuse.pretty")(options "")(descr ""))
+  (lib (name J6BRelay)(type KiCad)(uri "$(KIPRJMOD)/lib/J6BRelay.pretty")(options "")(descr ""))
+)

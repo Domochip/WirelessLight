@@ -1,0 +1,27 @@
+<div id="applicationName" style="display: none;">WirelessLight</div>
+<div id="shortApplicationName" style="display: none;">WLight</div>
+
+<h2 class="content-subhead">Lights<span id="l3"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
+<span id="LightsList"></span>
+
+<script>
+    $.getJSON("/gs1", function(GS1){
+        $.each(GS1,function(k,v){
+            if(k.match(/ln[0-9]/)){
+                $('#LightsList').append('Light '+k.substring(2,3)+((v!="")?' ('+v+'): ':': '));
+                $('#LightsList').append('<div class="pure-button-group" role="group"><style scoped>.pure-button-active{background: rgb(31, 141, 214);}</style>');
+                $('#LightsList').append('<button id="L'+k.substring(2,3)+'Off" class="pure-button'+(GS1['l'+k.substring(2,3)]==0?' pure-button-active':'')+'">OFF</button>');
+                $('#LightsList').append('<button id="L'+k.substring(2,3)+'On" class="pure-button'+(GS1['l'+k.substring(2,3)]==1?' pure-button-active':'')+'">ON</button>');
+                $('#LightsList').append('</div><br>');
+
+                $('#L'+k.substring(2,3)+'Off').click(function(){$.get('/setL?l'+k.substring(2,3)+'=0',function(){$('#L'+k.substring(2,3)+'Off').addClass("pure-button-active");$('#L'+k.substring(2,3)+'On').removeClass("pure-button-active");})});
+                $('#L'+k.substring(2,3)+'On').click(function(){$.get('/setL?l'+k.substring(2,3)+'=1',function(){$('#L'+k.substring(2,3)+'On').addClass("pure-button-active");$('#L'+k.substring(2,3)+'Off').removeClass("pure-button-active");})});
+            }
+        })
+
+        $("#l3").fadeOut();
+    })
+    .fail(function(){
+        $("#l3").html('<h4 style="display:inline;color:red;"><b> Failed</b></h4>');
+    });
+</script>
