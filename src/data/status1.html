@@ -2,26 +2,42 @@
 <div id="shortApplicationName" style="display: none;">WLight</div>
 
 <h2 class="content-subhead">Lights<span id="l3"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
-<span id="LightsList"></span>
+<span id="lightsList"></span>
 
 <script>
-    $.getJSON("/gs1", function(GS1){
-        $.each(GS1,function(k,v){
-            if(k.match(/ln[0-9]/)){
-                $('#LightsList').append('Light '+k.substring(2,3)+((v!="")?' ('+v+'): ':': '));
-                $('#LightsList').append('<div class="pure-button-group" role="group"><style scoped>.pure-button-active{background: rgb(31, 141, 214);}</style>');
-                $('#LightsList').append('<button id="L'+k.substring(2,3)+'Off" class="pure-button'+(GS1['l'+k.substring(2,3)]==0?' pure-button-active':'')+'">OFF</button>');
-                $('#LightsList').append('<button id="L'+k.substring(2,3)+'On" class="pure-button'+(GS1['l'+k.substring(2,3)]==1?' pure-button-active':'')+'">ON</button>');
-                $('#LightsList').append('</div><br>');
+    $("#lightsList").addEventListener('click',function(evt){
+        if(evt.srcElement.id.match(/L[0-9]Off/)){
+            get('/setL?l'+evt.srcElement.id[1]+'=0',function(){
+                $('#L'+evt.srcElement.id[1]+'Off').classList.add("pure-button-active");
+                $('#L'+evt.srcElement.id[1]+'On').classList.remove("pure-button-active");
+            })
+        };
+        if(evt.srcElement.id.match(/L[0-9]On/)){
+            get('/setL?l'+evt.srcElement.id[1]+'=1',function(){
+                $('#L'+evt.srcElement.id[1]+'On').classList.add("pure-button-active");
+                $('#L'+evt.srcElement.id[1]+'Off').classList.remove("pure-button-active");
+            })
+        };
+    },true);//take Event first (capturing mode)
 
-                $('#L'+k.substring(2,3)+'Off').click(function(){$.get('/setL?l'+k.substring(2,3)+'=0',function(){$('#L'+k.substring(2,3)+'Off').addClass("pure-button-active");$('#L'+k.substring(2,3)+'On').removeClass("pure-button-active");})});
-                $('#L'+k.substring(2,3)+'On').click(function(){$.get('/setL?l'+k.substring(2,3)+'=1',function(){$('#L'+k.substring(2,3)+'On').addClass("pure-button-active");$('#L'+k.substring(2,3)+'Off').removeClass("pure-button-active");})});
+    getJSON("/gs1",
+        function(GS1){
+            for(k in GS1){
+                if(k.match(/ln[0-9]/)){
+                    var lightNumber = k.substr(2,1);
+                    var lightButton = 'Light '+lightNumber+((GS1[k]!="")?' ('+GS1[k]+'): ':': ');
+                    lightButton+='<div class="pure-button-group" role="group"><style scoped>.pure-button-active{background: rgb(31, 141, 214);}</style>';
+                    lightButton+='<button id="L'+lightNumber+'Off" class="pure-button'+(GS1['l'+lightNumber]==0?' pure-button-active':'')+'">OFF</button>';
+                    lightButton+='<button id="L'+lightNumber+'On" class="pure-button'+(GS1['l'+lightNumber]==1?' pure-button-active':'')+'">ON</button>';
+                    lightButton+='</div><br>';
+
+                    $('#lightsList').innerHTML+=lightButton;
+                }
             }
-        })
-
-        $("#l3").fadeOut();
-    })
-    .fail(function(){
-        $("#l3").html('<h4 style="display:inline;color:red;"><b> Failed</b></h4>');
-    });
+            fadeOut($("#l3"));
+        },
+        function(){
+            $("#l3").innerHTML='<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
+        }
+    );
 </script>
