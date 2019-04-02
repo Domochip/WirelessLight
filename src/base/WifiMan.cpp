@@ -9,7 +9,7 @@ void WifiMan::EnableAP(bool force = false)
   }
 }
 
-void WifiMan::RefreshTick()
+void WifiMan::RefreshWiFi()
 {
   if (ssid[0]) //if STA configured
   {
@@ -45,7 +45,7 @@ void WifiMan::RefreshTick()
       {
         WiFi.disconnect();
         Serial.print(F("AP not found "));
-        _refreshTicker.once_scheduled(_refreshPeriod, std::bind(&WifiMan::RefreshTick, this));
+        _refreshTicker.once_scheduled(_refreshPeriod, [this]() { this->_needRefreshWifi = true; });
       }
     }
   }
@@ -251,7 +251,13 @@ bool WifiMan::AppInit(bool reInit = false)
     _apSsid[endOfSsid + 4] = 0;
   }
 
-  //Stop RefreshTicker and disconnect before WiFi operations -----
+  //make changes saved to flash
+  WiFi.persistent(true);
+
+  //Enable AP at start
+  EnableAP(true);
+
+  //Stop RefreshWiFi and disconnect before WiFi operations -----
   _refreshTicker.detach();
   WiFi.disconnect();
 
@@ -283,8 +289,8 @@ bool WifiMan::AppInit(bool reInit = false)
         //stop reconnection
         WiFi.disconnect();
         Serial.println(F("Wifi disconnected"));
-        //call refreshTicker shortly
-        _refreshTicker.once_ms_scheduled(100, std::bind(&WifiMan::RefreshTick, this));
+        //call RefreshWifi shortly
+        _needRefreshWifi = true;
       }
 #ifdef STATUS_LED_WARNING
       STATUS_LED_WARNING
@@ -292,17 +298,11 @@ bool WifiMan::AppInit(bool reInit = false)
     });
   }
 
-  //make next changes saved to flash
-  WiFi.persistent(true);
-
   //Set hostname
   WiFi.hostname(hostname);
 
-  //Enable AP at start
-  EnableAP(true);
-
-  //Call RefreshTick to initiate configuration
-  RefreshTick();
+  //Call RefreshWiFi to initiate configuration
+  RefreshWiFi();
 
   //right config so no need to touch again flash
   WiFi.persistent(false);
@@ -380,4 +380,12 @@ void WifiMan::AppInitWebServer(AsyncWebServer &server, bool &shouldReboot, bool 
   });
 }
 
-void WifiMan::AppRun(){};
+void WifiMan::AppRun()
+{
+  if (_needRefreshWifi)
+  {
+    RefreshWiFi();
+    //refresh done
+    _needRefreshWifi = false;
+  }
+};
