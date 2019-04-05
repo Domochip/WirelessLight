@@ -22,8 +22,8 @@ void WifiMan::RefreshWiFi()
       WiFi.begin(ssid, password);
       WiFi.config(ip, gw, mask, dns1, dns2);
 
-      //Wait 10sec for connection
-      for (int i = 0; i < 100 && !WiFi.isConnected(); i++)
+      //Wait _reconnectDuration for connection
+      for (int i = 0; i < (((uint16_t)_reconnectDuration) * 10) && !WiFi.isConnected(); i++)
       {
         if ((i % 10) == 0)
           Serial.print(".");
@@ -45,7 +45,7 @@ void WifiMan::RefreshWiFi()
       {
         WiFi.disconnect();
         Serial.print(F("AP not found "));
-        _refreshTicker.once_scheduled(_refreshPeriod, [this]() { this->_needRefreshWifi = true; });
+        _refreshTicker.once(_refreshPeriod, [this]() { _needRefreshWifi = true; });
       }
     }
   }
@@ -296,6 +296,17 @@ bool WifiMan::AppInit(bool reInit = false)
       STATUS_LED_WARNING
 #endif
     });
+
+    //if station connect to softAP
+    _staConnectedHandler = WiFi.onSoftAPModeStationConnected([this](const WiFiEventSoftAPModeStationConnected &evt) {
+      //flag it in _stationConnectedToSoftAP
+      _stationConnectedToSoftAP = true;
+    });
+    //if station disconnect of the softAP
+    _staDisconnectedHandler = WiFi.onSoftAPModeStationDisconnected([this](const WiFiEventSoftAPModeStationDisconnected &evt) {
+      //check if a station left
+      _stationConnectedToSoftAP = WiFi.softAPgetStationNum();
+    });
   }
 
   //Set hostname
@@ -382,10 +393,10 @@ void WifiMan::AppInitWebServer(AsyncWebServer &server, bool &shouldReboot, bool 
 
 void WifiMan::AppRun()
 {
-  if (_needRefreshWifi)
+  //if refreshWifi is required and no client is connected to the softAP
+  if (_needRefreshWifi && !_stationConnectedToSoftAP)
   {
-    RefreshWiFi();
-    //refresh done
     _needRefreshWifi = false;
+    RefreshWiFi();
   }
 };
