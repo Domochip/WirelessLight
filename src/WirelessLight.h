@@ -8,7 +8,7 @@
 
 #include "Main.h"
 #include "base\Utils.h"
-#include "base\Base.h"
+#include "base\Application.h"
 
 const char appDataPredefPassword[] PROGMEM = "ewcXoCt4HHjZUvY1";
 
@@ -26,7 +26,7 @@ const char appDataPredefPassword[] PROGMEM = "ewcXoCt4HHjZUvY1";
 #define NUMBER_OF_EVENTS 16
 //GPIO number of ESP pin that receive MCP interrupt
 #define MCP_INT_PIN 13
-//number of retry to send event ot Home Automation
+//number of retry to send event to Home Automation
 #define MAX_RETRY_NUMBER 3
 
 class Lights : public Application

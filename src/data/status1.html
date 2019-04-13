@@ -1,43 +1,46 @@
 <div id="applicationName" style="display: none;">WirelessLight</div>
 <div id="shortApplicationName" style="display: none;">WLight</div>
 
-<h2 class="content-subhead">Lights<span id="l3"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
+<h2 class="content-subhead">Lights<span id="l"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
 <span id="lightsList"></span>
 
 <script>
-    $("#lightsList").addEventListener('click',function(evt){
+    //QuerySelector Prefix is added by load function to know into what element queySelector need to look for
+    //var qsp = '#contentX ';
+
+    $(qsp+"#lightsList").addEventListener('click',function(evt){
         if(evt.srcElement.id.match(/L[0-9]Off/)){
             get('/setL?l'+evt.srcElement.id[1]+'=0',function(){
-                $('#L'+evt.srcElement.id[1]+'Off').classList.add("pure-button-active");
-                $('#L'+evt.srcElement.id[1]+'On').classList.remove("pure-button-active");
+                $(qsp+'#L'+evt.srcElement.id[1]+'Off').classList.add("pure-button-active");
+                $(qsp+'#L'+evt.srcElement.id[1]+'On').classList.remove("pure-button-active");
             })
         };
         if(evt.srcElement.id.match(/L[0-9]On/)){
             get('/setL?l'+evt.srcElement.id[1]+'=1',function(){
-                $('#L'+evt.srcElement.id[1]+'On').classList.add("pure-button-active");
-                $('#L'+evt.srcElement.id[1]+'Off').classList.remove("pure-button-active");
+                $(qsp+'#L'+evt.srcElement.id[1]+'On').classList.add("pure-button-active");
+                $(qsp+'#L'+evt.srcElement.id[1]+'Off').classList.remove("pure-button-active");
             })
         };
     },true);//take Event first (capturing mode)
 
-    getJSON("/gs1",
-        function(GS1){
-            for(k in GS1){
+    getJSON("/gs"+qsp[8],
+        function(GS){
+            for(k in GS){
                 if(k.match(/ln[0-9]/)){
                     var lightNumber = k.substr(2,1);
-                    var lightButton = 'Light '+lightNumber+((GS1[k]!="")?' ('+GS1[k]+'): ':': ');
+                    var lightButton = 'Light '+lightNumber+((GS[k]!="")?' ('+GS[k]+'): ':': ');
                     lightButton+='<div class="pure-button-group" role="group"><style scoped>.pure-button-active{background: rgb(31, 141, 214);}</style>';
-                    lightButton+='<button id="L'+lightNumber+'Off" class="pure-button'+(GS1['l'+lightNumber]==0?' pure-button-active':'')+'">OFF</button>';
-                    lightButton+='<button id="L'+lightNumber+'On" class="pure-button'+(GS1['l'+lightNumber]==1?' pure-button-active':'')+'">ON</button>';
+                    lightButton+='<button id="L'+lightNumber+'Off" class="pure-button'+(GS['l'+lightNumber]==0?' pure-button-active':'')+'">OFF</button>';
+                    lightButton+='<button id="L'+lightNumber+'On" class="pure-button'+(GS['l'+lightNumber]==1?' pure-button-active':'')+'">ON</button>';
                     lightButton+='</div><br>';
 
-                    $('#lightsList').innerHTML+=lightButton;
+                    $(qsp+'#lightsList').innerHTML+=lightButton;
                 }
             }
-            fadeOut($("#l3"));
+            fadeOut($(qsp+"#l"));
         },
         function(){
-            $("#l3").innerHTML='<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
+            $(qsp+"#l").innerHTML='<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
         }
     );
 </script>
