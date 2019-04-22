@@ -16,6 +16,7 @@ const char appDataPredefPassword[] PROGMEM = "ewcXoCt4HHjZUvY1";
 #include "data\config1.html.gz.h"
 
 #include <ESP8266HTTPClient.h>
+#include <Ticker.h>
 #include "VolatileTicker.h"
 #include <PubSubClient.h>
 #include <Adafruit_MCP23017.h>
@@ -116,13 +117,15 @@ private:
   WiFiClient _wifiClient;
   WiFiClientSecure _wifiClientSecure;
 
-  PubSubClient *_pubSubClient = NULL;
+  PubSubClient _mqttClient;
+  bool _needMqttReconnect = false;
+  Ticker _mqttReconnectTicker;
 
   //Declare required private methods
   static void McpInt();
   static void VolTickerInt(byte input);
-  bool MQTTConnectAndSubscribe(bool init = false);
-  static void MQTTCallback(char *topic, byte *payload, unsigned int length);
+  bool MqttConnect(bool init = false);
+  void MqttCallback(char *topic, uint8_t *payload, unsigned int length);
 
   void SetConfigDefaultValues();
   void ParseConfigJSON(DynamicJsonDocument &doc);

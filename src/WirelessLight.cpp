@@ -95,72 +95,75 @@ void Lights::VolTickerInt(byte input)
 }
 
 //------------------------------------------
-//Connect to the MQTT server and subscribe to the needed topic
-bool Lights::MQTTConnectAndSubscribe(bool init)
+// Connect then Subscribe to MQTT
+bool Lights::MqttConnect(bool init)
 {
+    if (!WiFi.isConnected())
+        return false;
 
-    //sn used for clientID
     char sn[9];
     sprintf_P(sn, PSTR("%08x"), ESP.getChipId());
 
     //generate clientID
     String clientID(F(APPLICATION1_NAME));
     clientID += sn;
-    //and try to connect
+
+    //Connect
     if (!_ha.mqtt.username[0])
-        _pubSubClient->connect(clientID.c_str());
+        _mqttClient.connect(clientID.c_str());
     else
+        _mqttClient.connect(clientID.c_str(), _ha.mqtt.username, _ha.mqtt.password);
+
+    //Subscribe to needed topic
+    if (_mqttClient.connected())
     {
-        if (!_ha.mqtt.password[0])
-            _pubSubClient->connect(clientID.c_str(), _ha.mqtt.username, NULL);
-        else
-            _pubSubClient->connect(clientID.c_str(), _ha.mqtt.username, _ha.mqtt.password);
+        //Subscribe to needed topic
+        //prepare topic subscription
+        String subscribeTopic = _ha.mqtt.generic.baseTopic;
+        byte xPos = 0;
+        //check for final slash
+        if (subscribeTopic.length() && subscribeTopic.charAt(subscribeTopic.length() - 1) != '/')
+            subscribeTopic += '/';
+
+        //Replace placeholders
+        if (subscribeTopic.indexOf(F("$sn$")) != -1)
+            subscribeTopic.replace(F("$sn$"), sn);
+
+        if (subscribeTopic.indexOf(F("$mac$")) != -1)
+            subscribeTopic.replace(F("$mac$"), WiFi.macAddress());
+
+        if (subscribeTopic.indexOf(F("$model$")) != -1)
+            subscribeTopic.replace(F("$model$"), APPLICATION1_NAME);
+
+        switch (_ha.mqtt.type) //switch on MQTT type
+        {
+        case HA_MQTT_GENERIC_1: // mytopic/command1
+            subscribeTopic += F("commandX");
+            xPos = subscribeTopic.length() - 1;
+            break;
+
+        case HA_MQTT_GENERIC_2: // mytopic/1/command
+            subscribeTopic += F("X/command");
+            xPos = subscribeTopic.length() - 9;
+            break;
+        }
+
+        //subscribe topics for each lights
+        for (byte i = 0; i < NUMBER_OF_LIGHTS; i++)
+        {
+            subscribeTopic[xPos] = i + '1';
+            if (init)
+                _mqttClient.publish(subscribeTopic.c_str(), ""); //make empty publish only for init
+            _mqttClient.subscribe(subscribeTopic.c_str());
+        }
     }
 
-    //prepare topic subscription
-    String subscribeTopic = _ha.mqtt.generic.baseTopic;
-    byte xPos = 0;
-    //check for final slash
-    if (subscribeTopic.length() && subscribeTopic.charAt(subscribeTopic.length() - 1) != '/')
-        subscribeTopic += '/';
-
-    //Replace placeholders
-    if (subscribeTopic.indexOf(F("$sn$")) != -1)
-        subscribeTopic.replace(F("$sn$"), sn);
-
-    if (subscribeTopic.indexOf(F("$mac$")) != -1)
-        subscribeTopic.replace(F("$mac$"), WiFi.macAddress());
-
-    if (subscribeTopic.indexOf(F("$model$")) != -1)
-        subscribeTopic.replace(F("$model$"), APPLICATION1_NAME);
-
-    switch (_ha.mqtt.type) //switch on MQTT type
-    {
-    case HA_MQTT_GENERIC_1: // mytopic/command1
-        subscribeTopic += F("commandX");
-        xPos = subscribeTopic.length() - 1;
-        break;
-
-    case HA_MQTT_GENERIC_2: // mytopic/1/command
-        subscribeTopic += F("X/command");
-        xPos = subscribeTopic.length() - 9;
-        break;
-    }
-
-    //subscribe topics for each lights
-    for (byte i = 0; i < NUMBER_OF_LIGHTS; i++)
-    {
-        subscribeTopic[xPos] = i + '1';
-        if (init)
-            _pubSubClient->publish(subscribeTopic.c_str(), ""); //make empty publish only for init
-        _pubSubClient->subscribe(subscribeTopic.c_str());
-    }
-
-    return _pubSubClient->connected();
+    return _mqttClient.connected();
 }
+
 //------------------------------------------
 //Callback used when an MQTT message arrived
-void Lights::MQTTCallback(char *topic, byte *payload, unsigned int length)
+void Lights::MqttCallback(char *topic, uint8_t *payload, unsigned int length)
 {
     //if payload is not 1 byte long return
     if (length != 1)
@@ -575,7 +578,6 @@ String Lights::GenerateStatusJSON()
 //code to execute during initialization and reinitialization of the app
 bool Lights::AppInit(bool reInit)
 {
-
     if (reInit)
     {
         detachInterrupt(digitalPinToInterrupt(MCP_INT_PIN));
@@ -584,22 +586,19 @@ bool Lights::AppInit(bool reInit)
                 _timers[i].detach();
     }
 
-    //Clean up MQTT variables
-    if (_pubSubClient)
-    {
-        if (_pubSubClient->connected())
-            _pubSubClient->disconnect();
-        delete _pubSubClient;
-        _pubSubClient = NULL;
-    }
+    //Stop MQTT Reconnect
+    _mqttReconnectTicker.detach();
+    if (_mqttClient.connected()) //Issue #598 : disconnect() crash if client not yet set
+        _mqttClient.disconnect();
 
-    //if MQTT used so build MQTT variables and connect
+    //if MQTT used so configure it
     if (_ha.protocol == HA_PROTO_MQTT)
     {
-        _pubSubClient = new PubSubClient(_ha.hostname, _ha.mqtt.port, MQTTCallback, _wifiClient);
+        //setup MQTT client
+        _mqttClient.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port).setCallback(std::bind(&Lights::MqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-        //connect and subscribe to required server and topics (init=true to publish topics)
-        MQTTConnectAndSubscribe(true);
+        //Connect
+        MqttConnect(true);
     }
 
     for (byte i = 0; i < NUMBER_OF_LIGHTS; i++)
@@ -863,22 +862,26 @@ void Lights::AppInitWebServer(AsyncWebServer &server, bool &shouldReboot, bool &
 //Run for timer
 void Lights::AppRun()
 {
-
-    //if _pubSubClient exists (aka MQTT enabled)
-    if (_pubSubClient)
+    if (_needMqttReconnect)
     {
-        //if not connected
-        if (!_pubSubClient->loop())
-        {
-            //try to reconnect
-            if (!MQTTConnectAndSubscribe())
-            {
-                //return error code minus 10 (result should be negative)
-                _haSendResult = _pubSubClient->state() - 10;
-                return;
-            }
-        }
+        _needMqttReconnect = false;
+        Serial.print(F("MQTT Reconnection : "));
+        if (MqttConnect())
+            Serial.println(F("OK"));
+        else
+            Serial.println(F("Failed"));
     }
+
+    //if MQTT required but not connected and reconnect ticker not started
+    if (_ha.protocol == HA_PROTO_MQTT && !_mqttClient.connected() && !_mqttReconnectTicker.active())
+    {
+        Serial.println(F("MQTT Disconnected"));
+        //set Ticker to reconnect after 20 or 60 sec (Wifi connected or not)
+        _mqttReconnectTicker.once_scheduled((WiFi.isConnected() ? 20 : 60), [this]() { _needMqttReconnect = true; _mqttReconnectTicker.detach(); });
+    }
+
+    if (_ha.protocol == HA_PROTO_MQTT)
+        _mqttClient.loop();
 
     //for each events in the list starting by nextEventPos
     for (byte evPos = _nextEventPos, counter = 0; counter < NUMBER_OF_EVENTS; counter++, evPos = (evPos + 1) % NUMBER_OF_EVENTS)
@@ -956,14 +959,8 @@ void Lights::AppRun()
 
             case HA_PROTO_MQTT:
 
-                //if not connected to MQTT
-                if (!_pubSubClient->connected())
-                {
-                    //return error code minus 10 (result should be negative)
-                    _haSendResult = _pubSubClient->state() - 10;
-                }
-                // else we are connected
-                else
+                //if we are connected
+                if (_mqttClient.connected())
                 {
                     //prepare topic
                     String completeTopic = _ha.mqtt.generic.baseTopic;
@@ -1000,7 +997,7 @@ void Lights::AppRun()
                         completeTopic.replace(F("$model$"), APPLICATION1_NAME);
 
                     //send
-                    if (_pubSubClient->publish(completeTopic.c_str(), _eventsList[evPos].lightOn ? "1" : "0"))
+                    if ((_haSendResult = _mqttClient.publish(completeTopic.c_str(), _eventsList[evPos].lightOn ? "1" : "0")))
                         _eventsList[evPos].sent1 = true;
                 }
 
@@ -1090,14 +1087,8 @@ void Lights::AppRun()
 
             case HA_PROTO_MQTT:
 
-                //if not connected to MQTT
-                if (!_pubSubClient->connected())
-                {
-                    //return error code minus 10 (result should be negative)
-                    _haSendResult = _pubSubClient->state() - 10;
-                }
-                // else we are connected
-                else
+                //if we are connected
+                if (_mqttClient.connected())
                 {
                     //prepare topic
                     String completeTopic = _ha.mqtt.generic.baseTopic;
@@ -1134,7 +1125,7 @@ void Lights::AppRun()
                         completeTopic.replace(F("$model$"), APPLICATION1_NAME);
 
                     //send
-                    if (_pubSubClient->publish(completeTopic.c_str(), String(_eventsList[evPos].eventCode).c_str()))
+                    if ((_haSendResult = _mqttClient.publish(completeTopic.c_str(), String(_eventsList[evPos].eventCode).c_str())))
                         _eventsList[evPos].sent2 = true;
                 }
                 break;
