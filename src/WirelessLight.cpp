@@ -227,10 +227,10 @@ void Lights::SetConfigDefaultValues()
     }
 
     _ha.protocol = HA_PROTO_DISABLED;
-    _ha.tls = false;
     _ha.hostname[0] = 0;
 
     _ha.http.type = HA_HTTP_GENERIC;
+    _ha.http.tls = false;
     memset(_ha.http.fingerPrint, 0, 20);
 
     for (byte i = 0; i < NUMBER_OF_LIGHTS; i++)
@@ -285,13 +285,13 @@ void Lights::ParseConfigJSON(DynamicJsonDocument &doc)
     //Parse Home Automation config
     if (!doc[F("haproto")].isNull())
         _ha.protocol = doc[F("haproto")];
-    if (!doc[F("hatls")].isNull())
-        _ha.tls = doc[F("hatls")];
     if (!doc[F("hahost")].isNull())
         strlcpy(_ha.hostname, doc["hahost"], sizeof(_ha.hostname));
 
     if (!doc[F("hahtype")].isNull())
         _ha.http.type = doc[F("hahtype")];
+    if (!doc[F("hahtls")].isNull())
+        _ha.http.tls = doc[F("hahtls")];
     if (!doc[F("hahfp")].isNull())
         Utils::FingerPrintS2A(_ha.http.fingerPrint, doc[F("hahfp")]);
 
@@ -378,10 +378,6 @@ bool Lights::ParseConfigWebRequest(AsyncWebServerRequest *request)
     //if an home Automation protocol has been selected then get common param
     if (_ha.protocol != HA_PROTO_DISABLED)
     {
-        if (request->hasParam(F("hatls"), true))
-            _ha.tls = (request->getParam(F("hatls"), true)->value() == F("on"));
-        else
-            _ha.tls = false;
         if (request->hasParam(F("hahost"), true) && request->getParam(F("hahost"), true)->value().length() < sizeof(_ha.hostname))
             strcpy(_ha.hostname, request->getParam(F("hahost"), true)->value().c_str());
     }
@@ -393,6 +389,10 @@ bool Lights::ParseConfigWebRequest(AsyncWebServerRequest *request)
 
         if (request->hasParam(F("hahtype"), true))
             _ha.http.type = request->getParam(F("hahtype"), true)->value().toInt();
+        if (request->hasParam(F("hahtls"), true))
+            _ha.http.tls = (request->getParam(F("hahtls"), true)->value() == F("on"));
+        else
+            _ha.http.tls = false;
         if (request->hasParam(F("hahfp"), true))
             Utils::FingerPrintS2A(_ha.http.fingerPrint, request->getParam(F("hahfp"), true)->value().c_str());
         for (i = 0; i < NUMBER_OF_LIGHTS; i++)
@@ -505,13 +505,13 @@ String Lights::GenerateConfigJSON(bool forSaveFile = false)
 
     //Generate Home Automation config information
     gc = gc + F(",\"haproto\":") + _ha.protocol;
-    gc = gc + F(",\"hatls\":") + _ha.tls;
     gc = gc + F(",\"hahost\":\"") + _ha.hostname + '"';
 
     //if for WebPage or protocol selected is HTTP
     if (!forSaveFile || _ha.protocol == HA_PROTO_HTTP)
     {
         gc = gc + F(",\"hahtype\":") + _ha.http.type;
+        gc = gc + F(",\"hahtls\":") + _ha.http.tls;
         gc = gc + F(",\"hahfp\":\"") + Utils::FingerPrintA2S(fpStr, _ha.http.fingerPrint, forSaveFile ? 0 : ':') + '"';
         for (i = 0; i < NUMBER_OF_LIGHTS; i++)
             gc = gc + F(",\"lid") + (i + 1) + F("\":") + _ha.http.lightsId[i];
@@ -592,30 +592,11 @@ bool Lights::AppInit(bool reInit)
         delete _pubSubClient;
         _pubSubClient = NULL;
     }
-    if (_wifiClient)
-    {
-        delete _wifiClient;
-        _wifiClient = NULL;
-    }
-    if (_wifiClientSecure)
-    {
-        delete _wifiClientSecure;
-        _wifiClientSecure = NULL;
-    }
 
     //if MQTT used so build MQTT variables and connect
     if (_ha.protocol == HA_PROTO_MQTT)
     {
-        if (!_ha.tls)
-        {
-            _wifiClient = new WiFiClient();
-            _pubSubClient = new PubSubClient(_ha.hostname, _ha.mqtt.port, MQTTCallback, *_wifiClient);
-        }
-        else
-        {
-            _wifiClientSecure = new WiFiClientSecure();
-            _pubSubClient = new PubSubClient(_ha.hostname, _ha.mqtt.port, MQTTCallback, *_wifiClientSecure);
-        }
+        _pubSubClient = new PubSubClient(_ha.hostname, _ha.mqtt.port, MQTTCallback, _wifiClient);
 
         //connect and subscribe to required server and topics (init=true to publish topics)
         MQTTConnectAndSubscribe(true);
@@ -934,7 +915,7 @@ void Lights::AppRun()
 
                     //Replace placeholders
                     if (completeURI.indexOf(F("$tls$")) != -1)
-                        completeURI.replace(F("$tls$"), _ha.tls ? "s" : "");
+                        completeURI.replace(F("$tls$"), _ha.http.tls ? "s" : "");
 
                     if (completeURI.indexOf(F("$host$")) != -1)
                         completeURI.replace(F("$host$"), _ha.hostname);
@@ -952,17 +933,15 @@ void Lights::AppRun()
                     HTTPClient http;
 
                     //if tls is enabled or not, we need to provide certificate fingerPrint
-                    if (!_ha.tls)
-                    {
-                        WiFiClient client;
-                        http.begin(client, completeURI);
-                    }
+                    if (!_ha.http.tls)
+                        http.begin(_wifiClient, completeURI);
                     else
                     {
-                        WiFiClientSecure clientSecure;
-                        char fpStr[41];
-                        clientSecure.setFingerprint(Utils::FingerPrintA2S(fpStr, _ha.http.fingerPrint));
-                        http.begin(clientSecure, completeURI);
+                        if (Utils::IsFingerPrintEmpty(_ha.http.fingerPrint))
+                            _wifiClientSecure.setInsecure();
+                        else
+                            _wifiClientSecure.setFingerprint(_ha.http.fingerPrint);
+                        http.begin(_wifiClientSecure, completeURI);
                     }
 
                     //if request successfull then sent is OK
@@ -1076,7 +1055,7 @@ void Lights::AppRun()
 
                     //Replace others placeholders
                     if (completeURI.indexOf(F("$tls$")) != -1)
-                        completeURI.replace(F("$tls$"), _ha.tls ? "s" : "");
+                        completeURI.replace(F("$tls$"), _ha.http.tls ? "s" : "");
 
                     if (completeURI.indexOf(F("$host$")) != -1)
                         completeURI.replace(F("$host$"), _ha.hostname);
@@ -1088,17 +1067,15 @@ void Lights::AppRun()
                     HTTPClient http;
 
                     //if tls is enabled or not, we need to provide certificate fingerPrint
-                    if (!_ha.tls)
-                    {
-                        WiFiClient client;
-                        http.begin(client, completeURI);
-                    }
+                    if (!_ha.http.tls)
+                        http.begin(_wifiClient, completeURI);
                     else
                     {
-                        WiFiClientSecure clientSecure;
-                        char fpStr[41];
-                        clientSecure.setFingerprint(Utils::FingerPrintA2S(fpStr, _ha.http.fingerPrint));
-                        http.begin(clientSecure, completeURI);
+                        if (Utils::IsFingerPrintEmpty(_ha.http.fingerPrint))
+                            _wifiClientSecure.setInsecure();
+                        else
+                            _wifiClientSecure.setFingerprint(_ha.http.fingerPrint);
+                        http.begin(_wifiClientSecure, completeURI);
                     }
 
                     //if request successfull then sent is OK

@@ -50,6 +50,7 @@ private:
   typedef struct
   {
     byte type = HA_HTTP_GENERIC;
+    bool tls = false;
     byte fingerPrint[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     //Ids of light indicator in Home Automation
     uint16_t lightsId[NUMBER_OF_LIGHTS];
@@ -90,7 +91,6 @@ private:
   typedef struct
   {
     byte protocol = HA_PROTO_DISABLED;
-    bool tls = false;
     char hostname[64 + 1] = {0};
     HTTP http;
     MQTT mqtt;
@@ -113,9 +113,9 @@ private:
   volatile byte _nextEventPos = 0;
 
   int _haSendResult = 0;
+  WiFiClient _wifiClient;
+  WiFiClientSecure _wifiClientSecure;
 
-  WiFiClient *_wifiClient = NULL;
-  WiFiClientSecure *_wifiClientSecure = NULL;
   PubSubClient *_pubSubClient = NULL;
 
   //Declare required private methods
