@@ -3,6 +3,9 @@
 
 <h2 class="content-subhead">Lights<span id="l"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
 <span id="lightsList"></span>
+<h3 class="content-subhead">Home Automation Status</h3>
+<span id="has1"></span><br>
+<span id="has2"></span>
 
 <script>
     //QuerySelector Prefix is added by load function to know into what element queySelector need to look for
@@ -35,6 +38,9 @@
                     lightButton+='</div><br>';
 
                     $(qsp+'#lightsList').innerHTML+=lightButton;
+                }
+                else{
+                    if((e = $(qsp+'#'+k)) != undefined) e.innerHTML = GS[k];
                 }
             }
             fadeOut($(qsp+"#l"));
