@@ -5,11 +5,6 @@
 
 //DomoChip Informations
 //------------Compile for 1M 64K SPIFFS------------
-//Configuration Web Pages :
-//http://IP/
-//http://IP/config
-//http://IP/fw
-//---
 //Lights Request Web Pages
 //http://IP/setL?l1=0&l2=1&l3=t //that will switch OFF Light1, switch ON light2 and toggle light3
 

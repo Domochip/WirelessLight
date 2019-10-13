@@ -114,7 +114,6 @@ bool Lights::MqttConnect(bool init)
     else
         _mqttClient.connect(clientID.c_str(), _ha.mqtt.username, _ha.mqtt.password);
 
-    //Subscribe to needed topic
     if (_mqttClient.connected())
     {
         //Subscribe to needed topic
