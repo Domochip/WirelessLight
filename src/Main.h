@@ -4,13 +4,10 @@
 #include <arduino.h>
 
 //DomoChip Informations
-//------------Compile for 1M 64K SPIFFS------------
 //Lights Request Web Pages
 //http://IP/setL?l1=0&l2=1&l3=t //that will switch OFF Light1, switch ON light2 and toggle light3
 
-//include Application header file
-#include "WirelessLight.h"
-
+#define APPLICATION1_HEADER "WirelessLight.h"
 #define APPLICATION1_NAME "WLight"
 #define APPLICATION1_DESC "DomoChip Wireless Light"
 #define APPLICATION1_CLASS Lights
@@ -23,8 +20,10 @@
 //Enable developper mode (SPIFFS editor)
 #define DEVELOPPER_MODE 0
 
-//Choose Serial Speed
-#define SERIAL_SPEED 115200
+//Log Serial Object
+#define LOG_SERIAL Serial
+//Choose Log Serial Speed
+#define LOG_SERIAL_SPEED 115200
 
 //Choose Pin used to boot in Rescue Mode
 #define RESCUE_BTN_PIN 2
