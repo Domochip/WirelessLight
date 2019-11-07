@@ -122,7 +122,7 @@ private:
   Ticker _mqttReconnectTicker;
 
   //Declare required private methods
-  static void McpInt();
+  static ICACHE_RAM_ATTR void McpInt();
   static void VolTickerInt(byte input);
   bool MqttConnect(bool init = false);
   void MqttCallback(char *topic, uint8_t *payload, unsigned int length);

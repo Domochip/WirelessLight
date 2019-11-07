@@ -12,7 +12,7 @@
 #define APPLICATION1_DESC "DomoChip Wireless Light"
 #define APPLICATION1_CLASS Lights
 
-#define VERSION_NUMBER "1.0.12"
+#define VERSION_NUMBER "1.0.13"
 
 #define DEFAULT_AP_SSID "WirelessLight"
 #define DEFAULT_AP_PSK "PasswordLight"
