@@ -51,13 +51,13 @@ void Lights::VolTickerInt(byte input)
     //Special Remote Restart order with 7 clicks
     if (glightStatus[input] == 6)
     {
-        Serial.println(F("Restart by 6 clicks"));
+        LOG_SERIAL.println(F("Restart by 6 clicks"));
         ESP.restart();
     }
     //Special Remote Restart order with 9 clicks
     if (glightStatus[input] == 8)
     {
-        Serial.println(F("Restart in Rescue Mode by 8 clicks"));
+        LOG_SERIAL.println(F("Restart in Rescue Mode by 8 clicks"));
         EEPROM.begin(4);
         EEPROM.write(0, 1);
         EEPROM.end();
@@ -911,17 +911,17 @@ void Lights::AppRun()
     if (_needMqttReconnect)
     {
         _needMqttReconnect = false;
-        Serial.print(F("MQTT Reconnection : "));
+        LOG_SERIAL.print(F("MQTT Reconnection : "));
         if (MqttConnect())
-            Serial.println(F("OK"));
+            LOG_SERIAL.println(F("OK"));
         else
-            Serial.println(F("Failed"));
+            LOG_SERIAL.println(F("Failed"));
     }
 
     //if MQTT required but not connected and reconnect ticker not started
     if (_ha.protocol == HA_PROTO_MQTT && !_mqttClient.connected() && !_mqttReconnectTicker.active())
     {
-        Serial.println(F("MQTT Disconnected"));
+        LOG_SERIAL.println(F("MQTT Disconnected"));
         //set Ticker to reconnect after 20 or 60 sec (Wifi connected or not)
         _mqttReconnectTicker.once_scheduled((WiFi.isConnected() ? 20 : 60), [this]() { _needMqttReconnect = true; _mqttReconnectTicker.detach(); });
     }
