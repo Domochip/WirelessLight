@@ -103,23 +103,9 @@ void Lights::MqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
     //prepare topic subscription
     String subscribeTopic = _ha.mqtt.generic.baseTopic;
     byte xPos = 0;
-    //check for final slash
-    if (subscribeTopic.length() && subscribeTopic.charAt(subscribeTopic.length() - 1) != '/')
-        subscribeTopic += '/';
 
     //Replace placeholders
-    if (subscribeTopic.indexOf(F("$sn$")) != -1)
-    {
-        char sn[9];
-        sprintf_P(sn, PSTR("%08x"), ESP.getChipId());
-        subscribeTopic.replace(F("$sn$"), sn);
-    }
-
-    if (subscribeTopic.indexOf(F("$mac$")) != -1)
-        subscribeTopic.replace(F("$mac$"), WiFi.macAddress());
-
-    if (subscribeTopic.indexOf(F("$model$")) != -1)
-        subscribeTopic.replace(F("$model$"), APPLICATION1_NAME);
+    MQTTMan::prepareTopic(subscribeTopic);
 
     switch (_ha.mqtt.type) //switch on MQTT type
     {
@@ -138,8 +124,8 @@ void Lights::MqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
     for (byte i = 0; i < NUMBER_OF_LIGHTS; i++)
     {
         subscribeTopic[xPos] = i + '1';
-        if (init)
-            mqttMan->publish(subscribeTopic.c_str(), ""); //make empty publish only for init
+        if (firstConnection)
+            mqttMan->publish(subscribeTopic.c_str(), ""); //make empty publish only for firstConnection
         mqttMan->subscribe(subscribeTopic.c_str());
     }
 }
@@ -977,9 +963,8 @@ void Lights::AppRun()
                     //prepare topic
                     String completeTopic = _ha.mqtt.generic.baseTopic;
 
-                    //check for final slash
-                    if (completeTopic.length() && completeTopic.charAt(completeTopic.length() - 1) != '/')
-                        completeTopic += '/';
+                    //Replace placeholders
+                    MQTTMan::prepareTopic(completeTopic);
 
                     switch (_ha.mqtt.type) //switch on MQTT type
                     {
@@ -993,20 +978,6 @@ void Lights::AppRun()
                         completeTopic += F("/status");
                         break;
                     }
-
-                    //prepare sn for placeholder
-                    char sn[9];
-                    sprintf_P(sn, PSTR("%08x"), ESP.getChipId());
-
-                    //Replace placeholders
-                    if (completeTopic.indexOf(F("$sn$")) != -1)
-                        completeTopic.replace(F("$sn$"), sn);
-
-                    if (completeTopic.indexOf(F("$mac$")) != -1)
-                        completeTopic.replace(F("$mac$"), WiFi.macAddress());
-
-                    if (completeTopic.indexOf(F("$model$")) != -1)
-                        completeTopic.replace(F("$model$"), APPLICATION1_NAME);
 
                     //send
                     if ((_haSendResult = m_mqttMan.publish(completeTopic.c_str(), _eventsList[evPos].lightOn ? "1" : "0")))
