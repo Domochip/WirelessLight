@@ -15,7 +15,7 @@ volatile byte *gnextEventPos;
 
 //------------------------------------------
 //STATIC - ISR for MCp setupInterrupts
-void Lights::McpInt()
+void Lights::mcpInt()
 {
     //read GPIOB
     uint8_t newGPIOB = gmcp23017->readGPIO(1);
@@ -36,7 +36,7 @@ void Lights::McpInt()
             glightStatus[i]++;
 
             //start timer
-            gtimers[i].once_ms(gmultiClickTime[i], VolTickerInt, i);
+            gtimers[i].once_ms(gmultiClickTime[i], volTickerInt, i);
         }
     }
 
@@ -46,7 +46,7 @@ void Lights::McpInt()
 
 //------------------------------------------
 //STATIC - ISR for VolatileTicker
-void Lights::VolTickerInt(byte input)
+void Lights::volTickerInt(byte input)
 {
     //Special Remote Restart order with 7 clicks
     if (glightStatus[input] == 6)
@@ -96,7 +96,7 @@ void Lights::VolTickerInt(byte input)
 
 //------------------------------------------
 // Connect then Subscribe to MQTT
-void Lights::MqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
+void Lights::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
 {
 
     //Subscribe to needed topic
@@ -132,7 +132,7 @@ void Lights::MqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection)
 
 //------------------------------------------
 //Callback used when an MQTT message arrived
-void Lights::MqttCallback(char *topic, uint8_t *payload, unsigned int length)
+void Lights::mqttCallback(char *topic, uint8_t *payload, unsigned int length)
 {
     //if payload is not 1 byte long return
     if (length != 1)
@@ -189,7 +189,7 @@ void Lights::MqttCallback(char *topic, uint8_t *payload, unsigned int length)
 
 //------------------------------------------
 //Used to initialize configuration properties to default values
-void Lights::SetConfigDefaultValues()
+void Lights::setConfigDefaultValues()
 {
     for (byte i = 0; i < NUMBER_OF_LIGHTS; i++)
     {
@@ -226,7 +226,7 @@ void Lights::SetConfigDefaultValues()
 };
 //------------------------------------------
 //Parse JSON object into configuration properties
-void Lights::ParseConfigJSON(DynamicJsonDocument &doc)
+void Lights::parseConfigJSON(DynamicJsonDocument &doc)
 {
     byte i;
     char btmStr[5] = {'b', 't', 'm', 'X', 0};       //pushButtonMode string
@@ -265,7 +265,7 @@ void Lights::ParseConfigJSON(DynamicJsonDocument &doc)
     if (!doc[F("hahtls")].isNull())
         _ha.http.tls = doc[F("hahtls")];
     if (!doc[F("hahfp")].isNull())
-        Utils::FingerPrintS2A(_ha.http.fingerPrint, doc[F("hahfp")]);
+        Utils::fingerPrintS2A(_ha.http.fingerPrint, doc[F("hahfp")]);
 
     for (i = 0; i < NUMBER_OF_LIGHTS; i++)
     {
@@ -312,7 +312,7 @@ void Lights::ParseConfigJSON(DynamicJsonDocument &doc)
 };
 //------------------------------------------
 //Parse HTTP POST parameters in request into configuration properties
-bool Lights::ParseConfigWebRequest(AsyncWebServerRequest *request)
+bool Lights::parseConfigWebRequest(AsyncWebServerRequest *request)
 {
     byte i;
     char btmStr[5] = {'b', 't', 'm', 'X', 0};       //pushButtonMode string
@@ -366,7 +366,7 @@ bool Lights::ParseConfigWebRequest(AsyncWebServerRequest *request)
         else
             _ha.http.tls = false;
         if (request->hasParam(F("hahfp"), true))
-            Utils::FingerPrintS2A(_ha.http.fingerPrint, request->getParam(F("hahfp"), true)->value().c_str());
+            Utils::fingerPrintS2A(_ha.http.fingerPrint, request->getParam(F("hahfp"), true)->value().c_str());
         for (i = 0; i < NUMBER_OF_LIGHTS; i++)
         {
             lidStr[3] = i + '1';
@@ -454,7 +454,7 @@ bool Lights::ParseConfigWebRequest(AsyncWebServerRequest *request)
 };
 //------------------------------------------
 //Generate JSON from configuration properties
-String Lights::GenerateConfigJSON(bool forSaveFile = false)
+String Lights::generateConfigJSON(bool forSaveFile = false)
 {
     String gc('{');
     byte i;
@@ -484,7 +484,7 @@ String Lights::GenerateConfigJSON(bool forSaveFile = false)
     {
         gc = gc + F(",\"hahtype\":") + _ha.http.type;
         gc = gc + F(",\"hahtls\":") + _ha.http.tls;
-        gc = gc + F(",\"hahfp\":\"") + Utils::FingerPrintA2S(fpStr, _ha.http.fingerPrint, forSaveFile ? 0 : ':') + '"';
+        gc = gc + F(",\"hahfp\":\"") + Utils::fingerPrintA2S(fpStr, _ha.http.fingerPrint, forSaveFile ? 0 : ':') + '"';
         for (i = 0; i < NUMBER_OF_LIGHTS; i++)
             gc = gc + F(",\"lid") + (i + 1) + F("\":") + _ha.http.lightsId[i];
 
@@ -525,7 +525,7 @@ String Lights::GenerateConfigJSON(bool forSaveFile = false)
 };
 //------------------------------------------
 //Generate JSON of application status
-String Lights::GenerateStatusJSON()
+String Lights::generateStatusJSON()
 {
     String gs('{');
 
@@ -548,7 +548,7 @@ String Lights::GenerateStatusJSON()
         break;
     case HA_PROTO_MQTT:
         gs = gs + F("MQTT Connection State : ");
-        switch (m_mqttMan.state())
+        switch (_mqttMan.state())
         {
         case MQTT_CONNECTION_TIMEOUT:
             gs = gs + F("Timed Out");
@@ -579,7 +579,7 @@ String Lights::GenerateStatusJSON()
             break;
         }
 
-        if (m_mqttMan.state() == MQTT_CONNECTED)
+        if (_mqttMan.state() == MQTT_CONNECTED)
             gs = gs + F("\",\"has2\":\"Last Publish Result : ") + (_haSendResult ? F("OK") : F("Failed"));
 
         break;
@@ -592,7 +592,7 @@ String Lights::GenerateStatusJSON()
 };
 //------------------------------------------
 //code to execute during initialization and reinitialization of the app
-bool Lights::AppInit(bool reInit)
+bool Lights::appInit(bool reInit)
 {
     if (reInit)
     {
@@ -603,7 +603,7 @@ bool Lights::AppInit(bool reInit)
     }
 
     //Stop MQTT
-    m_mqttMan.disconnect();
+    _mqttMan.disconnect();
 
     //if MQTT used so configure it
     if (_ha.protocol == HA_PROTO_MQTT)
@@ -614,13 +614,13 @@ bool Lights::AppInit(bool reInit)
         willTopic += F("connected");
 
         //setup MQTT
-        m_mqttMan.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port);
-        m_mqttMan.setConnectedAndWillTopic(willTopic.c_str());
-        m_mqttMan.setConnectedCallback(std::bind(&Lights::MqttConnectedCallback, this, std::placeholders::_1, std::placeholders::_2));
-        m_mqttMan.setCallback(std::bind(&Lights::MqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        _mqttMan.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port);
+        _mqttMan.setConnectedAndWillTopic(willTopic.c_str());
+        _mqttMan.setConnectedCallback(std::bind(&Lights::mqttConnectedCallback, this, std::placeholders::_1, std::placeholders::_2));
+        _mqttMan.setCallback(std::bind(&Lights::mqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
         //Connect
-        m_mqttMan.connect(_ha.mqtt.username, _ha.mqtt.password);
+        _mqttMan.connect(_ha.mqtt.username, _ha.mqtt.password);
     }
 
     for (byte i = 0; i < NUMBER_OF_LIGHTS; i++)
@@ -697,13 +697,13 @@ bool Lights::AppInit(bool reInit)
     _previousGPIOA = _mcp23017.readGPIO(0);
     _previousGPIOB = _mcp23017.readGPIO(1);
 
-    attachInterrupt(digitalPinToInterrupt(MCP_INT_PIN), McpInt, FALLING);
+    attachInterrupt(digitalPinToInterrupt(MCP_INT_PIN), mcpInt, FALLING);
 
     return true;
 };
 //------------------------------------------
 //Return HTML Code to insert into Status Web page
-const uint8_t *Lights::GetHTMLContent(WebPageForPlaceHolder wp)
+const uint8_t *Lights::getHTMLContent(WebPageForPlaceHolder wp)
 {
     switch (wp)
     {
@@ -720,7 +720,7 @@ const uint8_t *Lights::GetHTMLContent(WebPageForPlaceHolder wp)
     return nullptr;
 };
 //and his Size
-size_t Lights::GetHTMLContentSize(WebPageForPlaceHolder wp)
+size_t Lights::getHTMLContentSize(WebPageForPlaceHolder wp)
 {
     switch (wp)
     {
@@ -738,7 +738,7 @@ size_t Lights::GetHTMLContentSize(WebPageForPlaceHolder wp)
 };
 //------------------------------------------
 //code to register web request answer to the web server
-void Lights::AppInitWebServer(AsyncWebServer &server, bool &shouldReboot, bool &pauseApplication)
+void Lights::appInitWebServer(AsyncWebServer &server, bool &shouldReboot, bool &pauseApplication)
 {
 
     server.on("/setL", HTTP_GET, [this](AsyncWebServerRequest *request) {
@@ -882,10 +882,10 @@ void Lights::AppInitWebServer(AsyncWebServer &server, bool &shouldReboot, bool &
 
 //------------------------------------------
 //Run for timer
-void Lights::AppRun()
+void Lights::appRun()
 {
     if (_ha.protocol == HA_PROTO_MQTT)
-        m_mqttMan.loop();
+        _mqttMan.loop();
 
     //for each events in the list starting by nextEventPos
     for (byte evPos = _nextEventPos, counter = 0; counter < NUMBER_OF_EVENTS; counter++, evPos = (evPos + 1) % NUMBER_OF_EVENTS)
@@ -944,7 +944,7 @@ void Lights::AppRun()
                         http.begin(_wifiClient, completeURI);
                     else
                     {
-                        if (Utils::IsFingerPrintEmpty(_ha.http.fingerPrint))
+                        if (Utils::isFingerPrintEmpty(_ha.http.fingerPrint))
                             _wifiClientSecure.setInsecure();
                         else
                             _wifiClientSecure.setFingerprint(_ha.http.fingerPrint);
@@ -964,7 +964,7 @@ void Lights::AppRun()
             case HA_PROTO_MQTT:
 
                 //if we are connected
-                if (m_mqttMan.connected())
+                if (_mqttMan.connected())
                 {
                     //prepare topic
                     String completeTopic = _ha.mqtt.generic.baseTopic;
@@ -986,7 +986,7 @@ void Lights::AppRun()
                     }
 
                     //send
-                    if ((_haSendResult = m_mqttMan.publish(completeTopic.c_str(), _eventsList[evPos].lightOn ? "1" : "0")))
+                    if ((_haSendResult = _mqttMan.publish(completeTopic.c_str(), _eventsList[evPos].lightOn ? "1" : "0")))
                         _eventsList[evPos].sent1 = true;
                 }
 
@@ -1057,7 +1057,7 @@ void Lights::AppRun()
                         http.begin(_wifiClient, completeURI);
                     else
                     {
-                        if (Utils::IsFingerPrintEmpty(_ha.http.fingerPrint))
+                        if (Utils::isFingerPrintEmpty(_ha.http.fingerPrint))
                             _wifiClientSecure.setInsecure();
                         else
                             _wifiClientSecure.setFingerprint(_ha.http.fingerPrint);
@@ -1077,7 +1077,7 @@ void Lights::AppRun()
             case HA_PROTO_MQTT:
 
                 //if we are connected
-                if (m_mqttMan.connected())
+                if (_mqttMan.connected())
                 {
                     //prepare topic
                     String completeTopic = _ha.mqtt.generic.baseTopic;
@@ -1114,7 +1114,7 @@ void Lights::AppRun()
                         completeTopic.replace(F("$model$"), APPLICATION1_NAME);
 
                     //send
-                    if ((_haSendResult = m_mqttMan.publish(completeTopic.c_str(), String(_eventsList[evPos].eventCode).c_str())))
+                    if ((_haSendResult = _mqttMan.publish(completeTopic.c_str(), String(_eventsList[evPos].eventCode).c_str())))
                         _eventsList[evPos].sent2 = true;
                 }
                 break;
