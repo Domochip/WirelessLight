@@ -2,7 +2,8 @@
 <div id="shortApplicationName" style="display: none;">WLight</div>
 
 <h2 class="content-subhead">Lights<span id="l"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
-<span id="lightsList"></span>
+<h3 class="content-subhead">Lights Infos (<span id="lastRefresh">AutoRefresh</span>)</h3>
+<dl id="liveData"></dl>
 <h3 class="content-subhead">Home Automation Status</h3>
 <span id="has1"></span><br>
 <span id="has2"></span>
@@ -11,37 +12,75 @@
     //QuerySelector Prefix is added by load function to know into what element queySelector need to look for
     //var qsp = '#contentX ';
 
-    $(qsp+"#lightsList").addEventListener('click',function(evt){
-        if(evt.srcElement.id.match(/L[0-9]Off/)){
-            get('/setL?l'+evt.srcElement.id[1]+'=0',function(){
-                $(qsp+'#L'+evt.srcElement.id[1]+'Off').classList.add("pure-button-active");
-                $(qsp+'#L'+evt.srcElement.id[1]+'On').classList.remove("pure-button-active");
-            })
+    function generateLightElements(lightNumber){
+
+        var ret = 'Light '+lightNumber+' <span id="ln'+lightNumber+'Value"></span>';
+        ret+='<input type="hidden" id="ls'+lightNumber+'Value">'
+        ret+='<div id="ls'+lightNumber+'" class="pure-button-group" role="group"><style scoped>.pure-button-active{background: rgb(31, 141, 214);}</style>';
+        ret+='<button id="ls'+lightNumber+'Off" class="pure-button">OFF</button>';
+        ret+='<button id="ls'+lightNumber+'On" class="pure-button">ON</button>';
+        ret+='</div>';
+
+        return ret;
+    }
+
+    function displayCurrentLightState(kForId,newValue){
+        if(newValue==0) $(qsp+"#"+kForId+"Off").classList.add("pure-button-active"); else $(qsp+"#"+kForId+"Off").classList.remove("pure-button-active");
+        if(newValue==1) $(qsp+"#"+kForId+"On").classList.add("pure-button-active"); else $(qsp+"#"+kForId+"On").classList.remove("pure-button-active");
+    }
+
+    function parseLiveData(liveData){
+        if($(qsp+'#liveData') == undefined) return;
+        for(k in liveData){
+            kForId=(/[^a-zA-Z]/.test(k[0]) ? 'a' : '')+k; //k[0] is not in a-zA-Z then we need to add 'a'
+            kForId=kForId.replace(/ /g,'_');
+            if($(qsp+'#'+kForId) != undefined){
+                var existingElement= $(qsp+'#'+kForId+'Value');
+                if(existingElement.tagName=='INPUT'){
+                    if(existingElement.val!=liveData[k]){
+                        existingElement.val=liveData[k];
+                        existingElement.dispatchEvent(new Event('change'));
+                    }
+                }
+                else{
+                    if(existingElement.innerText!=liveData[k]){
+                        existingElement.innerText=liveData[k];
+                        existingElement.style.fontWeight="bold";
+                    }
+                    else{
+                        existingElement.style.fontWeight="normal";
+                    }
+                }
+            }
+            else{
+                var newElement = document.createElement("dd");
+                newElement.id='ln'+kForId[2];
+                newElement.innerHTML=generateLightElements(kForId.substr(2,1));
+                $(qsp+'#liveData').appendChild(newElement);
+
+                $(qsp+'#ls'+kForId[2]+'Value').addEventListener('change',function(evt){displayCurrentLightState(evt.srcElement.id.replace('Value',''),evt.srcElement.val)});
+                parseLiveData({[k]:liveData[k]});
+            }
+        }
+        if($(qsp+'#lastRefresh') != undefined){
+            $(qsp+'#lastRefresh').innerText=(new Date()).toLocaleString();
+        }
+    }
+    
+    $(qsp+"#liveData").addEventListener('click',function(evt){
+        if(evt.srcElement.id.match(/ls[0-9]Off/)){
+            get('/setL?l'+evt.srcElement.id[2]+'=0')
         };
-        if(evt.srcElement.id.match(/L[0-9]On/)){
-            get('/setL?l'+evt.srcElement.id[1]+'=1',function(){
-                $(qsp+'#L'+evt.srcElement.id[1]+'On').classList.add("pure-button-active");
-                $(qsp+'#L'+evt.srcElement.id[1]+'Off').classList.remove("pure-button-active");
-            })
+        if(evt.srcElement.id.match(/ls[0-9]On/)){
+            get('/setL?l'+evt.srcElement.id[2]+'=1')
         };
     },true);//take Event first (capturing mode)
 
     getJSON("/gs"+qsp[8],
         function(GS){
             for(k in GS){
-                if(k.match(/ln[0-9]/)){
-                    var lightNumber = k.substr(2,1);
-                    var lightButton = 'Light '+lightNumber+((GS[k]!="")?' ('+GS[k]+'): ':': ');
-                    lightButton+='<div class="pure-button-group" role="group"><style scoped>.pure-button-active{background: rgb(31, 141, 214);}</style>';
-                    lightButton+='<button id="L'+lightNumber+'Off" class="pure-button'+(GS['l'+lightNumber]==0?' pure-button-active':'')+'">OFF</button>';
-                    lightButton+='<button id="L'+lightNumber+'On" class="pure-button'+(GS['l'+lightNumber]==1?' pure-button-active':'')+'">ON</button>';
-                    lightButton+='</div><br>';
-
-                    $(qsp+'#lightsList').innerHTML+=lightButton;
-                }
-                else{
-                    if((e = $(qsp+'#'+k)) != undefined) e.innerHTML = GS[k];
-                }
+                if(k=='liveData') parseLiveData(GS[k]);
+                else if((e = $(qsp+'#'+k)) != undefined) e.innerHTML = GS[k];
             }
             fadeOut($(qsp+"#l"));
         },
@@ -49,4 +88,12 @@
             $(qsp+"#l").innerHTML='<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
         }
     );
+
+    if (!!window.EventSource) {
+        var statusEventSource = new EventSource('/statusEvt'+qsp[8]);
+        statusEventSource.addEventListener('message', function(e) {
+            console.log('statusEvt'+qsp[8]+' : '+e.data);
+            parseLiveData(JSON.parse(e.data));
+        });
+    }
 </script>

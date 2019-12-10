@@ -12,13 +12,13 @@
 #define APPLICATION1_DESC "DomoChip Wireless Light"
 #define APPLICATION1_CLASS Lights
 
-#define VERSION_NUMBER "1.0.13"
+#define VERSION_NUMBER "1.1.0"
 
 #define DEFAULT_AP_SSID "WirelessLight"
 #define DEFAULT_AP_PSK "PasswordLight"
 
 //Enable status webpage EventSource
-#define ENABLE_STATUS_EVENTSOURCE 0
+#define ENABLE_STATUS_EVENTSOURCE 1
 
 //Enable developper mode (SPIFFS editor)
 #define DEVELOPPER_MODE 0

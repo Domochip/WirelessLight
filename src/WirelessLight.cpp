@@ -529,13 +529,15 @@ String Lights::generateStatusJSON()
 {
     String gs('{');
 
-    gs = gs + F("\"nol\":") + NUMBER_OF_LIGHTS;
-
+    gs = gs + F("\"liveData\":{");
     for (byte i = 0; i < NUMBER_OF_LIGHTS; i++)
     {
-        gs = gs + F(",\"ln") + (i + 1) + F("\":\"") + _lightNames[i] + '"';
-        gs = gs + F(",\"l") + (i + 1) + F("\":") + ((_previousGPIOA & (1 << (NUMBER_OF_LIGHTS - 1 - i))) > 0);
+        if (i)
+            gs += ',';
+        gs = gs + F("\"ln") + (i + 1) + F("\":\"") + _lightNames[i] + '"';
+        gs = gs + F(",\"ls") + (i + 1) + F("\":") + ((_previousGPIOA & (1 << (NUMBER_OF_LIGHTS - 1 - i))) > 0);
     }
+    gs += '}';
 
     gs = gs + F(",\"has1\":\"");
     switch (_ha.protocol)
@@ -996,6 +998,10 @@ void Lights::appRun()
             //if sent failed decrement retry count
             if (!_eventsList[evPos].sent1)
                 _eventsList[evPos].retryLeft1--;
+
+            //if event sent to HA or no more retryLeft then notify web client
+            if (_eventsList[evPos].sent1 || !_eventsList[evPos].retryLeft1)
+                _statusEventSource.send((String(F("{\"ls")) + (_eventsList[evPos].lightNumber + 1) + F("\":") + (_eventsList[evPos].lightOn ? '1' : '0') + '}').c_str());
         }
 
         //if eventCode not yet sent and retryLeft over 0
